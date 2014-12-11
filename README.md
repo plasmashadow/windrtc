@@ -1,6 +1,13 @@
-Hello World
-==============
+<h1> WindRTC PeerConnection Library </h1>
 
-This is Hello World.
+```javascript
+     //client side
+    var connection=new PeerCallConnection({host:hostname,port:portnumber});
+    connection.startVideoCall();
+    connection.call();
+```
+Server Side Abstaraction
 
-Wind RTC Library Made on top of webrtc
+```javascript
+    var server =new WebRTCServer(portnumber);
+```
