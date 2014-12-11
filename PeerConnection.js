@@ -226,6 +226,19 @@ function TextSharing(data)
         self.CreateOffer();
     }
     
+    self.connection.ondatachannel=function(event){
+        var recivechannel=event.channel;
+        recivechannel.onmessage=function(event){
+            console.log(event.data);
+        }
+        recivechannel.onopen=function(){
+            console.log("channel has been opened");
+        }
+        recivechannel.onclose=function(err){
+            console.log("channel closed");
+        }
+    }
+    
     self.CreateOffer=function(){
         self.connection.createOffer(function(offer){
             self.connection.setLocalDescription(offer);
@@ -234,3 +247,4 @@ function TextSharing(data)
         },ErrorHandler,mediaConstraints);
     };
 }
+
