@@ -25,25 +25,25 @@ self.app.get("/peerconnection.js",function(req,res){
     res.sendfile(__dirname+"/PeerConnection.js");
 });
 self.server.listen(port);
-self.io.sockets.on('connection',function(socket){
+self.io.on('connection',function(socket){
      socket.on('emitice',function(data){
     	console.log('got ice candidate');
-        self.io.sockets.emit('sendice',data);
+        socket.broadcast.emit('sendice',data);
     });
     socket.on('emitoffer',function(data){
     	console.log("got offer");
         if(data.to===undefined)
         {
-        self.io.sockets.emit('reciveoffer',data);
+        socket.broadcast.emit('reciveoffer',data);
         }
         else
         {
-           self.io.sockets.to(data.to).emit('reciveoffer',data);
+           self.io.to(data.to).emit('reciveoffer',data);
         }
     });
     socket.on('emitanswer',function(data){
     	console.log("emit answer");
-    	self.io.sockets.emit('reciveanswer',data);
+    	socket.broadcast.emit('reciveanswer',data);
     });
 });
 

@@ -32,6 +32,11 @@ POSSIBILITY OF SUCH DAMAGE.
 						OfferToReceiveVideo: true
 					}
 				};
+var optionalRtpDataChannels = {
+    optional: [{
+        RtpDataChannels: true
+    }]
+};
                 
                 window.RTCPeerConnection = window.mozRTCPeerConnection || window.webkitRTCPeerConnection;
                 window.RTCSessionDescription = window.mozRTCSessionDescription || window.RTCSessionDescription;
@@ -157,4 +162,75 @@ function PeerCallConnection(data)
     }
     
     
+}
+
+
+function TextSharing(data)
+{
+   var self=this;
+   self.host=data.host;
+   self.port=data.port;
+   self.socket=io.connect("http://"+self.host+":"+self.port);    
+   
+   self.connection=new RTCPeerConnection(window.iceServers,optionalRtpDataChannels);
+   
+    function ErrorHandler(error)
+    {
+        console.log(error);
+    }
+   
+    self.socket.on("sendice",function(data){
+        console.log("recived ice");
+       self.connection.addIceCandidate(new RTCIceCandidate(data)); 
+    });
+    
+    self.connection.onicecandidate=function(event){
+        if(!event || !event.candidate)return;
+        console.log("emitted ice");
+        self.socket.emit("emitice",event.candidate);
+    }
+    
+      self.socket.on("reciveanswer",function(data){
+          console.log("recived answer");
+        self.connection.setRemoteDescription(new RTCSessionDescription(data)); 
+    });
+    
+    self.socket.on("reciveoffer",function(data){
+       self.connection.setRemoteDescription(new RTCSessionDescription(data),function(){
+           self.connection.createAnswer(function(answer){
+           self.connection.setLocalDescription(answer);
+           console.log("emitting answer");
+           self.socket.emit("emitanswer",answer);
+       },ErrorHandler,mediaConstraints);
+       });
+       
+    });
+    
+    self.openChannel=function(){
+        self.channel=self.connection.createDataChannel('webchannel');
+        self.channel.onmessage = function (event) {
+            console.log("on message event no-triggring");
+            console.log( 'received a message:', event.data);
+        };
+
+        self.channel.onopen = function () {
+            console.log("emit RTP data");
+            self.channel.send('first text message over RTP data ports');
+        };
+        self.channel.onclose = function (e) {
+            console.error(e);
+        };
+        self.channel.onerror = function (e) {
+            console.error(e);
+        };
+        self.CreateOffer();
+    }
+    
+    self.CreateOffer=function(){
+        self.connection.createOffer(function(offer){
+            self.connection.setLocalDescription(offer);
+            console.log("emitting offer");
+            self.socket.emit("emitoffer",offer);
+        },ErrorHandler,mediaConstraints);
+    };
 }
