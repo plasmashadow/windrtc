@@ -1,0 +1,14 @@
+<html>
+    <head><title>WindRTC Demo PeerCallConnection</title></head>
+    <body>
+        <script src="https://cdn.socket.io/socket.io-1.2.1.js"></script>
+        <script src='peerconnection.js'></script>
+        <div id="container">
+            
+        </div>
+        <script>
+            var connection=new PeerCallConnection({host:"localhost",port:"8080"});
+            connection.startVideoCall("container");
+        </script>
+    </body>
+</html>

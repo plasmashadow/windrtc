@@ -1,0 +1,18 @@
+{
+    "name": "WindRTC",
+    "description": "Wind RTC Library Made on top of webrtc",
+    "version": "0.0.1",
+    "main": "./windrtc.js",
+    "author": {
+        "name": "plasmashadow",
+        "email": "plasmashadowx@gmail.com"
+    },
+    "keywords": [],
+    "licenses": {
+        "type": "apache20"
+    },
+    "dependencies":{
+        "socket.io":"1.1.x",
+        "express":"4.x.x"
+    }
+}
