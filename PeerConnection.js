@@ -206,8 +206,7 @@ function TextSharing(data)
        
     });
     
-    self.openChannel=function(){
-        self.channel=self.connection.createDataChannel('webchannel');
+    self.channel=self.connection.createDataChannel('webchannel');
         self.channel.onmessage = function (event) {
             console.log("on message event no-triggring");
             console.log( 'received a message:', event.data);
@@ -216,6 +215,7 @@ function TextSharing(data)
         self.channel.onopen = function () {
             console.log("emit RTP data");
             self.channel.send('first text message over RTP data ports');
+            self.channel.send("hey i got the message");
         };
         self.channel.onclose = function (e) {
             console.error(e);
@@ -223,21 +223,26 @@ function TextSharing(data)
         self.channel.onerror = function (e) {
             console.error(e);
         };
+    self.openChannel=function(){
+
         self.CreateOffer();
     }
-    
-    self.connection.ondatachannel=function(event){
-        var recivechannel=event.channel;
-        recivechannel.onmessage=function(event){
-            console.log(event.data);
-        }
-        recivechannel.onopen=function(){
-            console.log("channel has been opened");
-        }
-        recivechannel.onclose=function(err){
-            console.log("channel closed");
-        }
+    self.sendMessage=function(data){
+        self.channel.send(data);
     }
+    // self.connection.ondatachannel=function(event){
+    //     // var recivechannel=event.channel;
+    //     // recivechannel.onmessage=function(event){
+    //     //     console.log(event.data);
+    //     // }
+    //     // recivechannel.onopen=function(){
+    //     //     console.log("channel has been opened");
+    //     //     recivechannel.send("hey i got the message");
+    //     // }
+    //     // recivechannel.onclose=function(err){
+    //     //     console.log("channel closed");
+    //     // }
+    // }
     
     self.CreateOffer=function(){
         self.connection.createOffer(function(offer){
@@ -248,3 +253,148 @@ function TextSharing(data)
     };
 }
 
+
+function FileShare(data)
+{
+  var self=this;
+  var arrayToStoreChunks=[];
+  self.host=data.host;
+  self.port=data.port;
+  self.socket=io.connect("http://"+self.host+":"+self.port);    
+  var chunkLength = 1000;
+   /*
+    *  Finding 
+    */
+  (function(){
+      var input =document.createElement("input");
+      input.setAttribute("type","file");
+      document.body.appendChild(input);
+  })();
+  /*
+  creating a file sharing.
+  */
+  self.connection=new RTCPeerConnection(window.iceServers,optionalRtpDataChannels);
+   
+    function ErrorHandler(error)
+    {
+        console.log(error);
+    }
+
+      self.socket.on("sendice",function(data){
+        console.log("recived ice");
+       self.connection.addIceCandidate(new RTCIceCandidate(data)); 
+    });
+    
+    self.connection.onicecandidate=function(event){
+        if(!event || !event.candidate)return;
+        console.log("emitted ice");
+        self.socket.emit("emitice",event.candidate);
+    }
+    
+      self.socket.on("reciveanswer",function(data){
+          console.log("recived answer");
+        self.connection.setRemoteDescription(new RTCSessionDescription(data)); 
+    });
+    
+    self.socket.on("reciveoffer",function(data){
+       self.connection.setRemoteDescription(new RTCSessionDescription(data),function(){
+           self.connection.createAnswer(function(answer){
+           self.connection.setLocalDescription(answer);
+           console.log("emitting answer");
+           self.socket.emit("emitanswer",answer);
+       },ErrorHandler,mediaConstraints);
+    });
+    });
+
+    self.channel=self.connection.createDataChannel('webchannel');
+        self.channel.onmessage = function (event) {
+           var data = JSON.parse(event.data);
+           console.log(data.file_name);
+           arrayToStoreChunks.push(data.message); 
+           console.log(JSON.stringify(data));
+           console.log(data.message);// pushing chunks in array
+           if (data.last) 
+            {
+          saveToDisk(arrayToStoreChunks.join(''), data.name);
+          arrayToStoreChunks = []; // resetting array
+            }
+        };
+
+        self.channel.onopen = function () {
+            console.log("emit RTP data");
+            //self.channel.send('first text message over RTP data ports');
+          //  self.channel.send("hey i got the message");
+        };
+        
+        self.channel.onclose = function (e) {
+            console.error(e);
+        };
+        
+        self.channel.onerror = function (e) {
+            console.error(e);
+        };
+        function saveToDisk(fileUrl, fileName) {
+            console.log("saving to the disk");
+              var save = document.createElement('a');
+              save.href = fileUrl;
+              save.target = '_blank';
+              save.setAttribute('download', fileName);
+              document.body.appendChild(save);
+              var event = document.createEvent('Event');
+              save.click();
+              // event.initEvent('click', true, true);
+
+              // save.dispatchEvent(event);
+              console.log(save.href);
+              URL.revokeObjectURL(save.href);
+          }
+        document.querySelector('input[type=file]').onchange=function(){
+
+            self.file=this.files[0];
+            console.log(self.file.name);
+            console.log(self.file)
+            self.CreateOffer();
+        }
+        var name;
+        self.Send=function()
+        {
+            var reader = new FileReader();
+            reader.readAsDataURL(self.file);
+            name=self.file.name;
+            reader.onload=onReadAsDataURL;
+        }
+     function onReadAsDataURL(event, text) {
+            var data = {}; // data object to transmit over data channel
+
+            if (event) text = event.target.result; // on first invocation
+
+            if (text.length > chunkLength) {
+                data.message = text.slice(0, chunkLength); // getting chunk using predefined chunk length
+            } else {
+                data.message = text;
+                data.last = true;
+            }
+            data.name=name;
+             console.log(data);
+             self.channel.send(JSON.stringify(data)); // use JSON.stringify for chrome!
+
+            var remainingDataURL = text.slice(data.message.length);
+            if (remainingDataURL.length) setTimeout(function () {
+                onReadAsDataURL(null, remainingDataURL); // continue transmitting
+            }, 500)
+          }
+
+
+
+     self.openChannel=function(){
+        self.CreateOffer();
+    }
+     self.CreateOffer=function(){
+        self.connection.createOffer(function(offer){
+            self.connection.setLocalDescription(offer);
+            console.log("emitting offer");
+            self.socket.emit("emitoffer",offer);
+        },ErrorHandler,mediaConstraints);
+    };
+
+}
